@@ -1,92 +1,180 @@
-# smapa-image
+# SMAPA Image - Smart Panel Device OS
 
-Operating System Image for the Smart Panel Device
+This repository contains the build system for creating the operating system image for the Smart Panel Device based on STM32MP153C. The image integrates TF-A, OP-TEE, U-Boot, Linux, and a root filesystem into a complete SD card image.
 
-The image is built using buildroot with scripts (and possibly patches) from Bootlin's buildroot-external-st br2-external tree. It combines TF-A, OP-TEE, U-Boot, Linux and a root filesystem into an SD card image; this is just what buildroot does. Bootlin's br2-external tree currently requires the use of Bootlin's buildroot fork which is in the process of being upstreamed, see the [buildroot-external-st docs](https://github.com/bootlin/buildroot-external-st/blob/st/2024.02.3/docs/internals.md#changes-compared-to-upstream-buildroot). Although we do not use buildroot-external-st as true br2-external tree anymore, we still use Bootlin's buildroot fork for historic reasons.
+## Device Information
 
-**Note:** This image is not extensively tested yet. To be safe, you may want to use the Yocto-based image from the [Jenkins build](https://jenkins.apps.sele.iml.fraunhofer.de/job/OpenST-STM32MP1-smapav4/). Specifically, download the file [FlashLayout_sdcard_stm32mp153c-ic-trusted.raw.xz](https://jenkins.apps.sele.iml.fraunhofer.de/job/OpenST-STM32MP1-smapav4/lastSuccessfulBuild/artifact/FlashLayout_sdcard_stm32mp153c-ic-trusted.raw.xz).
+The Smart Panel device runs on STM32MP153C hardware and provides the following connection interfaces:
 
-## Getting Started
+- **USB-C port** providing USB Ethernet/RNDIS Gadget connectivity
+- Default network configuration: 192.168.7.1
+- Default login: `root` (no password required)
 
-1. Download the sdcard image (`sdcard.img.gz`) and the bmap file (`sdcard.img.bmap`) from the build pipeline. To build the image locally, set up all buildroot requirements and run the step shown in `.gitlab-ci.yml`.
-2. Flash the image using a bmap-aware flashing tool, e.g. [`bmap-rs`](https://crates.io/crates/bmap-rs): `bmap-rs copy sdcard.img.gz <path-to-sdcard>`
+## Flashing the Image
 
-**Note:** For security reasons, the `/etc/wpa_supplicant/wpa_supplicant-wlan0.conf` does not contain any configured networks by default so if Wi-Fi shall be used, this has to be configured first. See the `Features` section below on how to do so.
+### Prerequisites
 
-## Repository Layout
+You'll need:
+- The image file (`sdcard.img.gz`)
+- A compatible SD card (8GB or larger recommended)
 
-We use a buildroot [out-of-tree build](http://buildroot.org/downloads/manual/manual.html#_building_out_of_tree). Like this, we can store the buildroot configuration file(s) in this repository while buildroot itself is fetched externally. Additionally, we use buildroot's [`<pkg>_OVERRIDE_SRCDIR` mechanism](https://buildroot.org/downloads/manual/manual.html#_advanced_usage) (Section 8.13.6 "Using Buildroot during development") with a `local.mk` file to use our forks of TF-A, OP-TEE, U-Boot and Linux. Both the buildroot and buildroot-external-st sources as well as TF-A, OP-TEE, U-Boot and Linux are managed and fetched using git submodules.
+### Linux
 
-This setup, especially using `local.mk` which is supposed to be used for "development", may be unusual but it removes the necessity to manage patches and out-of-tree device-tree source files. Buildroot itself is only able to download TF-A, OP-TEE, U-Boot and Linux from upstream. Since we might also want to use ST forks and since we definitely want to add custom device-tree sources, this would normally result in patching the sources and adding the device-tree sources externally. This is possible but adding all this in custom forks of the repositories seems more manageable.
+1. Install `bmap-tools`:
+   ```
+   sudo apt-get install bmap-tools
+   ```
 
-In summary, the `build` directory contains the `.config` and `local.mk` file, the buildroot, buildroot-external-st, TF-A, OP-TEE, U-Boot and Linux repositories are managed using git submodules. The build itself happens in the `build` directory using a buildroot out-of-tree build.
+2. Flash the image:
+   ```
+   sudo bmaptool copy sdcard.img.gz /dev/sdX
+   ```
+   Replace `/dev/sdX` with your SD card device (use `lsblk` to identify it).
 
-### Submodule Initialization Workaround
+### macOS
 
-Unfortunately, we have observed alarmingly slow Fraunhofer cc-asp Gitlab performance (around 1MB/s speed). For example, cloning the `linux` submodule which is around 5GB big would take nearly 2 hours then. Luckily, there is a nice workaround to speed up the initial submodule clone. Afterwards, all git operations are fast enough because the vast majority of the repositories is already present locally:
-1. Run `git submodule init`. This copies the submodule information from `.gitmodules` to `.git/config`.
-2. Replace the submodule urls by the urls of the repos which we forked our repos from. At the time of writing, these are (ordered by repository size):
-    - https://github.com/STMicroelectronics/linux.git
-    - https://github.com/bootlin/buildroot.git
-    - https://github.com/STMicroelectronics/u-boot
-    - https://github.com/STMicroelectronics/arm-trusted-firmware
-    - https://github.com/STMicroelectronics/optee_os.git
-    - https://github.com/bootlin/buildroot-external-st.git
-3. Run `git submodule update`. This will fail because the referenced commits are missing in the upstream repositories.
-4. Run `git submodule sync`. This restores the submodule urls in `.git/config` and sets them as remote urls in the submodule directories.
-5. Run `git submodule update` again. This time, it should succeed and bring the repo into the desired state.
+1. Install `bmap-tools` via Homebrew:
+   ```
+   brew install bmap-tools
+   ```
 
-For the gitlab-runner build server, the submodule initialization has already been done. gitlab-runner reuses previous repositories of the same project, thus the pipeline setup is reasonably fast.
+2. Flash the image:
+   ```
+   sudo bmaptool copy sdcard.img.gz /dev/diskX
+   ```
+   Replace `/dev/diskX` with your SD card device (use `diskutil list` to identify it).
 
-## Features
+### Windows
 
-Many features in the image are configurable by adjusting the corresponding files in the image appropriately. These changes may be done in various ways, for example:
-1. In the `rootfs-overlay` before building the image. This requires a rebuild and possibly some knowledge about buildroot. 
-2. In the sdcard image mounted via a loop device.
-3. In a mounted sdcard after flashing the sdcard.
-4. In the running system. If the configuration changes affect network or ssh server setup, this may require a serial connection.
+The simplest way to flash the SD card image on Windows is using Rufus:
 
-### Version Info
-The git version (`git describe`) of the currently running image is dumped into `/smapa-image-version-info`.
+1. Download and install [Rufus](https://rufus.ie/)
+2. Extract the `sdcard.img.gz` file to get `sdcard.img`
+3. Launch Rufus
+4. Select your SD card in the device dropdown
+5. Click the "SELECT" button and choose the extracted `sdcard.img` file
+6. Click "START" to begin flashing
+7. Wait for the process to complete before removing the SD card
 
-### Network + mDNS
-- `systemd-networkd` for network configuration
-- USB CDC ECM + RNDIS for Ethernet over USB with a static `192.168.7.1/24` address for `usb0`
-- DHCP server for the USB Ethernet connection
-- Wi-Fi authentication for `wlan0` using `wpa_supplicant`
-- **Note:** No network configurations by default in `/etc/wpa_supplicant/wpa_supplicant-wlan0.conf` because this would require Wi-Fi credentials in the repository
-- DHCP for `wlan0` by default
-- Multicast DNS enabled for `wlan0`
-- Default hostname set to `smapa` in buildroot config, so the default mDNS name is `smapa.local`
+## Building the Image
 
-#### Configuration
-- Add your network configuration(s) to `/etc/wpa_supplicant/wpa_supplicant-wlan0.conf`, e.g. `wpa_passphrase <SSID> <PSK>  >>  <mountpoint>/etc/wpa_supplicant/wpa_supplicant-wlan0.conf`; make sure not to remove the line `ctrl_interface=/var/run/wpa_supplicant` for `wpa_cli` to work from the `smapa-mp1-software`
-- Adjust `/etc/systemd/network/wlan0.network`, e.g. to set a static IP address
-- Create/Change `/etc/hostname` to overwrite the default hostname, e.g. if multiple devices are used in the same network
+### Prerequisites
 
-### SSH Server
-- Root login allowed
-- Some keys are authorized by the supplied `/root/.ssh/authorized_keys` in the rootfs overlay
+- Linux build environment (Ubuntu 20.04 or later recommended)
+- Required packages: `build-essential gcc g++ gperf bison flex texinfo help2man make libncurses5-dev python3-dev python3-setuptools unzip bzip2 libtool-bin wget curl git`
 
-#### Configuration
-- Add your key to `/root/.ssh/authorized_keys` to authorize yourself to login with your keypair
+### Local Build
 
-### Ash Shell
-By default, the ash shell is used. The image contains a basic ash profile in `/etc/profile` which sets a simple prompt and adds some aliases. To see what aliases are set, just have a look at the file.
+1. Clone the repository:
+   ```
+   git clone https://github.com/your-org/smapa-image.git
+   cd smapa-image
+   ```
 
-#### Configuration
-To configure ash to your preferences, adjust `/etc/profile`.
+2. Build the image:
+   ```
+   make O=$PWD/build -C buildroot
+   ```
 
-### Installed Applications
-- vim
-- nano
-- tmux
-- jq
-- openssl
+3. The resulting image files will be in the `build/images/` directory:
+   - `sdcard.img.gz` - Compressed SD card image
+   - `sdcard.img.bmap` - Block map file for faster flashing
 
-#### Configuration
-To add more applications, the buildroot config has to be changed. Normally, this is not done in the rootfs-overlay.
+### Building with GitHub Actions
 
-### M4 Firmware
-TODO: 
-For historic reasons, a working `m4-firmware` is automatically included in the image. It should be removed in the future so do not rely on it.
+You can use GitHub Actions to automatically build the image without setting up a local build environment:
+
+1. Fork or clone the repository on GitHub
+2. Make your desired changes
+3. Push the changes to GitHub (or create a pull request)
+4. GitHub Actions will automatically start building the image
+5. Once the build is complete, you can download the image from the "Actions" tab:
+   - Navigate to the specific workflow run
+   - Scroll down to the "Artifacts" section
+   - Download the "buildroot-images" artifact which contains the SD card image files
+
+## Customizing the Build
+
+### Understanding the Configuration Structure
+
+The build system is based on Buildroot, with the main configuration in the `build/.config` file. This configuration defines which packages, kernel options, and system settings are included in the build.
+
+Key directories:
+- `build/`: Contains the Buildroot configuration and build output
+- `rootfs-overlay/`: Contains files that will be copied to the root filesystem
+- `rootfs-customization/`: Contains scripts that modify the root filesystem during build
+
+### Modifying the Configuration
+
+To modify the build configuration:
+
+1. Edit the existing configuration with menuconfig:
+   ```
+   make O=$PWD/build -C buildroot menuconfig
+   ```
+
+2. Save your changes and exit menuconfig
+
+3. Rebuild the image:
+   ```
+   make O=$PWD/build -C buildroot
+   ```
+
+### Cleaning the Build
+
+To clean the build directory and start fresh:
+
+1. Clean the entire build:
+   ```
+   make O=$PWD/build -C buildroot clean
+   ```
+
+2. Alternatively, to clean only specific packages:
+   ```
+   make O=$PWD/build -C buildroot <package>-dirclean
+   ```
+   Replace `<package>` with the name of the package to clean (e.g., `linux-dirclean` for the kernel)
+
+## Connecting to the Device
+
+1. Insert the flashed SD card into the device and power it on
+2. Connect to the device using the USB-C port:
+   - The device will appear as a USB Ethernet adapter with IP 192.168.7.1
+   - Connect via SSH: `ssh root@192.168.7.1`
+
+## Features and Configuration
+
+### Network Configuration
+
+- **USB Ethernet**: Configured with static IP 192.168.7.1 and DHCP server for connected clients
+- **Wi-Fi**: Requires manual configuration
+
+To configure Wi-Fi:
+1. Add your network to `/etc/wpa_supplicant/wpa_supplicant-wlan0.conf`:
+   ```
+   ctrl_interface=/var/run/wpa_supplicant
+   network={
+       ssid="YourNetworkName"
+       psk="YourPassword"
+   }
+   ```
+2. Alternatively, use the `wpa_passphrase` utility:
+   ```
+   wpa_passphrase YourNetworkName YourPassword >> /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+   ```
+
+### SSH Access
+
+- Root login is enabled by default
+- Add your SSH key to `/root/.ssh/authorized_keys` for key-based authentication
+
+### Preinstalled Packages
+
+The image comes with several useful utilities:
+- vim, nano (text editors)
+- tmux (terminal multiplexer)
+- jq (JSON processor)
+- openssl (cryptographic library)
+- systemd-networkd (network management)
+- wpa_supplicant (Wi-Fi configuration)
+- SSH server
