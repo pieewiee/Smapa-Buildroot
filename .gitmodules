@@ -1,0 +1,18 @@
+[submodule "arm-trusted-firmware"]
+	path = arm-trusted-firmware
+	url = git@gitlab.cc-asp.fraunhofer.de:awesome-halo-130/sw-universe/embedded-linux/arm-trusted-firmware.git
+[submodule "u-boot"]
+	path = u-boot
+	url = git@gitlab.cc-asp.fraunhofer.de:awesome-halo-130/sw-universe/embedded-linux/u-boot.git
+[submodule "buildroot"]
+	path = buildroot
+	url = git@gitlab.cc-asp.fraunhofer.de:awesome-halo-130/sw-universe/embedded-linux/buildroot.git
+[submodule "linux"]
+	path = linux
+	url = git@gitlab.cc-asp.fraunhofer.de:awesome-halo-130/sw-universe/embedded-linux/linux.git
+[submodule "buildroot-external-st"]
+	path = buildroot-external-st
+	url = git@gitlab.cc-asp.fraunhofer.de:awesome-halo-130/sw-universe/embedded-linux/buildroot-external-st.git
+[submodule "optee_os"]
+	path = optee_os
+	url = git@gitlab.cc-asp.fraunhofer.de:awesome-halo-130/sw-universe/embedded-linux/optee_os.git

@@ -1,0 +1,18 @@
+default:
+  tags: 
+    - buildroot
+  before_script:
+    # At the time of writing, we do not have recursive submodules. But it does not hurt so we are future-proof specifying the `--recursive` flag.
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
+    - git submodule foreach --recursive git reset --hard
+
+build:
+  stage: build
+  script:
+    - make O=$PWD/build -C buildroot
+  artifacts:
+    paths:
+      - build/images/sdcard.img.gz
+      - build/images/sdcard.img.bmap
+    when: always

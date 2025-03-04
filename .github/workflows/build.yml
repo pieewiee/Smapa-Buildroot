@@ -1,0 +1,35 @@
+name: Build Buildroot Image
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+        
+    - name: Set up build environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc g++ gperf bison flex texinfo help2man make libncurses5-dev python3-dev python3-setuptools unzip bzip2 libtool-bin wget curl git
+
+    - name: Build Buildroot
+      run: |
+        make O=$PWD/build -C buildroot
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: buildroot-images
+        path: |
+          build/images/sdcard.img.gz
+          build/images/sdcard.img.bmap
+

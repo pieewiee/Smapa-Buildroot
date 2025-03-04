@@ -1,0 +1,2 @@
+# The /var/lib/dhcpd/dhcpd.leases file needs to be present to start dhcpd.
+# Which dhcpd.leases file to use is configured in /etc/dhcp/dhcpd.conf.

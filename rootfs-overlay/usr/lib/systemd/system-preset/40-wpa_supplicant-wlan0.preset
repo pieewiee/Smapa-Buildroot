@@ -1,0 +1,2 @@
+# Overrides the preset from /lib/systemd/system-preset/50-wpa_supplicant.preset which disables all wpa_supplicant@ template services
+enable wpa_supplicant@.service wlan0
