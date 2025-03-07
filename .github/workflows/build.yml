@@ -30,5 +30,3 @@ jobs:
         path: |
           build/images/sdcard.img.gz
           build/images/sdcard.img.bmap
-        retention-days: 90
-        public: true  # This makes the artifact publicly accessible
